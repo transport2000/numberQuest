@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <title>数字解密</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/fontawesome-all.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<!-- Masthead -->
+<header class="masthead text-white text-center">
+    <div class="overlay"></div>
+    <div class="container">
+        <div id="content-masthead" class="row">
+            <div class="col-xl-9 mx-auto fa-2x">
+                <i class="fas fa-spinner fa-spin"></i>&nbsp;加载中...
+            </div>
+        </div>
+    </div>
+</header>
+
+
+<!-- Footer -->
+<footer class="footer bg-dark">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6 h-100 text-center text-lg-left my-auto">
+                <ul class="list-inline mb-2">
+                    <li class="list-inline-item ">
+                        <a href="https://github.com/ChengOrangeJu/WebExtensionWallet"
+                           target="view_window"> 安装chrome钱包插件</a>
+                    </li>
+                    <li class="list-inline-item">&sdot;</li>
+                    <li class="list-inline-item">
+                        <a href="https://github.com/nebulasio/wiki/blob/master/tutorials.md"
+                           target="view_window">nebulas wiki</a>
+                    </li>
+                    <li class="list-inline-item">&sdot;</li>
+                    <li class="list-inline-item">
+                        <a href="https://incentive.nebulas.io/cn/signup.html?invite=F2E1U"
+                           target="view_window"> 提交Dapp获取100NAS奖励</a>
+                    </li>
+
+                </ul>
+                <p class="text-muted small mb-4 mb-lg-0">Powered by nebulas.io</p>
+            </div>
+            <div class="col-lg-6 h-100 text-center text-lg-right my-auto">
+                <a href="https://nebulas.io" target="view_window"> <img src="img/nebulasx60.png">
+                </a>
+
+            </div>
+        </div>
+    </div>
+</footer>
+<script src="js/director.min.js"></script>
+<script src="js/jquery.js"></script>
+<script src="js/nebulas.js"></script>
+<script src="js/nebPay.js"></script>
+<script src="js/clipboard.min.js"></script>
+<script src="js/guess.js"></script>
+
+<script>
+
+
+var questKey = 0;
+var randomNum = [];
+var countDown = 6;
+var warrior = {};
+var txHash = "";
+var addQuestQueryId;
+var serialNumber;
+
+
+dappAddress = "n1qjwgAjnTcdAzz2XTwyQ1sqw2eYDgpxz5Z";
+
+var NebPay = require("nebpay");
+var nebPay = new NebPay();
+var nebulas = require("nebulas"),
+        Account = nebulas.Account,
+        neb = new nebulas.Neb();
+
+neb.setRequest(new nebulas.HttpRequest("https://mainnet.nebulas.io"));
+
+
+new ClipboardJS('#btn-copy');
+
+
+var routes = {
+    '/': function () {
+        initIndexPage();
+    },
+    '/:key': function (key) {
+        initQuestPage(key);
+    }
+};
+var router = Router(routes);
+router.init("/");
+
+
+//--------------------------------
+//在新窗口打开挑战网址
+$(document).on("click", "#btn-open-url", function () {
+    var url = $("#quest-url").val();
+    window.open(url);
+});
+
+
+//生成新挑战
+$(document).on("click", "#btn-new-quest", function () {
+    questKey = 0;
+    randomNum = [];
+    countDown = 6;
+    warrior = {};
+    txHash = "";
+
+
+    if (typeof (webExtensionWallet) == "undefined") {
+        alert("需要先安装chrome钱包插件，才能继续操作");
+    } else {
+        var timestamp = new Date().getTime();
+        var key = Math.floor(Math.random() * timestamp);
+
+
+        addQuestQueryId = setInterval(function () {
+            addQuestQuery();
+        }, 8000);
+
+        var callArgs = JSON.stringify([key.toString(), warrior]);
+        serialNumber = nebPay.call(dappAddress, 0, "setQuest", callArgs, {
+            listener: function (res) {
+                txHash = res.txhash;
+                if (typeof res == "string") {
+                    clearInterval(addQuestQueryId);
+                } else {
+                    $("#btn-new-quest").html("正在处理，请稍等...").attr('disabled', "true");
+
+                }
+            }
+        });
+
+//查询写入操作是否完成
+        function addQuestQuery() {
+            if (txHash.length != 0) {
+                neb.api.getTransactionReceipt({hash: txHash}).then(function (res) {
+
+                    if (res.status === 1) {
+                        clearInterval(addQuestQueryId);
+                        var content = "<div class=\"col-xl-9 mx-auto\">" +
+                                "<h3 class=\"mb-5\">欢迎来到数字解密</h3>" +
+                                "<p>新谜题已经生成完毕，请将下方链接发送给好友，让他来挑战你的谜题吧！</p></div>" +
+                                "<div class=\"col-md-10 col-lg-8 col-xl-7 mx-auto \">" +
+                                "<div class=\"input-group\">" +
+                                "<input id=\"quest-url\" type=\"text\" class=\"form-control\" " +
+                                "value=\"http://" + window.location.host + "/numberQuest/#" +
+                                key + "\" readonly >" +
+                                "<div class=\"input-group-append\">" +
+                                "<button id=\"btn-copy\" class=\"btn\" type=\"button\"" +
+                                "data-clipboard-target=\"#quest-url\" alt=\"复制网址\">" +
+                                "<i class=\"fas fa-copy\"></i></button></div>" +
+                                "<button style=\"margin-left: 5px\" class=\"btn btn-dark\" " +
+                                "id=\"btn-open-url\" type=\"button\">" +
+                                "在新窗口打开</button></div></div>";
+
+                        $("#content-masthead").html(content);
+
+                    }
+                }).catch(function (err) {
+                    console.log(err);
+                });
+            }
+        }
+    }
+
+});
+
+//生成首页
+function initIndexPage() {
+    var index = "<div class=\"col-xl-9 mx-auto\">" +
+            "<h3 class=\"mb-5\">欢迎来到数字解密</h3>" +
+            "<p>点击下方按钮，生成一道新谜题，让你的好友来挑战吧！</p></div>" +
+            "<div class=\"col-md-10 col-lg-8 col-xl-7 mx-auto \">" +
+            "<div id=\"content-index\"><button id=\"btn-new-quest\" type=\"submit\"" +
+            "class=\"btn btn-block btn-lg btn-dark\">生成迷题</button> </div></div>";
+    $("#content-masthead").html(index);
+}
+
+
+//生成挑战页面
+function initQuestPage(key) {
+
+    var loading = "<div class=\"col-xl-9 mx-auto fa-2x\">" +
+            "<i class=\"fas fa-spinner fa-spin\"></i>&nbsp;加载中...</div>";
+    $("#content-masthead").html(loading);
+
+    randomNum = getRandomNum();
+
+    var from = Account.NewAccount().getAddressString();
+    neb.api.call({
+        from: from,
+        to: dappAddress,
+        value: 0,
+        nonce: 0,
+        gasPrice: 1000000,
+        gasLimit: 2000000,
+        contract: {
+            function: "getQuest",
+            args: "[\"" + key.toString() + "\"]"
+        }
+    }).then(function (res) {
+                if (res.result == "null") {
+
+                    masthead = "<div class=\"col-xl-9 mx-auto\">" +
+                            "<h3 class=\"mb-5\">似乎找不到对应的数字谜题</h3>" +
+                            "<p>请刷新后重试吧</p></div >" +
+                            "<div class=\"col-md-10 col-lg-8 col-xl-7 mx-auto \">" +
+                            "<div id=\"content-index\"><button id=\"btn-new-quest\" type=\"submit\"" +
+                            "class=\"btn btn-block btn-lg btn-dark\"> 重新挑战</button> </div></div>";
+                    $("#content-masthead").html(masthead);
+
+                } else {
+                    questKey = key;
+                    warrior = JSON.parse(res.result);
+                    var masthead = "";
+                    if ($.isEmptyObject(warrior)) {
+                        masthead = "<div id=\"content-text-result\" class=\"col-md-5 mx-auto\">" +
+                                "<h3>你的朋友向你发来了谜题挑战</h3><div class=\"text-left\">" +
+                                "游戏规则：<br><ul>" +
+
+                                "<li>在本次挑战中，系统随机生成了一个不重复的4位随机数字</li>" +
+                                "<li>你可以在输入框内填写答案，系统会根据你填写的答案给出相应提示</li>" +
+                                "<li>提示分为两部分，提示你猜对数字的个数和位置</li>" +
+                                "<li>比如正确答案是1234,你输入了1024,数字1,2,4正确，系统会提示你猜对了3个数字，" +
+                                "另外1，4在正确的位置上，系统会提示有2个数字位置正确</li>" +
+                                "<li>每一轮只有6次机会，祝你好运</li>" +
+                                "</ul></div></div><div class=\"col-md-5 mx-auto\">" +
+                                "<div class=\"form-container\"><div class=\"input-group\">" +
+                                "<input id=\"input-num\" type=\"text\" class=\"form-control\">" +
+                                "<div class=\"input-group-append\">" +
+                                "<button id=\"btn-guess\" type=\"submit\" class=\"btn btn-dark\">" +
+                                "解密</button></div></div></div>" +
+                                "<div style=\"margin-top: 1rem!important\">" +
+                                "<ul id=\"content-guess-result\" class=\"list-group\"></ul></div></div>";
+                    } else {
+
+                        masthead = "<div class=\"col-xl-9 mx-auto\">" +
+                                "<h3 class=\"mb-5\">恭喜&nbsp;" + warrior.name + "</h3>" +
+                                "<p>尝试了&nbsp;" + warrior.count + "&nbsp;次<br>" +
+                                "找到了答案：" + warrior.quest +
+                                "<br>于" + timeStamp2String(warrior.date) + "&nbsp;解密成功</p><br>" +
+                                "<p>点击下方按钮，生成一道新谜题，让你的好友来挑战吧！</p></div>" +
+                                "<div class=\"col-md-10 col-lg-8 col-xl-7 mx-auto \">" +
+                                "<div id=\"content-index\"><button id=\"btn-new-quest\" type=\"submit\"" +
+                                "class=\"btn btn-block btn-lg btn-dark\">生成新迷题</button> </div></div>";
+                    }
+                    $("#content-masthead").html(masthead);
+                }
+            }
+    ).catch(function (err) {
+                console.log("error:" + err.message)
+            })
+}
+
+//猜数字
+$(document).on("click", "#btn-guess", function () {
+    var num = $("#input-num").val();
+    var res = "";
+
+    if (isNaN(num) || num.length != 4 || hasRep(num)) {
+        alert("输入必须是4位不重复的数字");
+    } else {
+        countDown--;
+        var strRNum = randomNum.join("");
+        if (num == strRNum) {
+            var successContent = "<h3>恭喜你解密成功！</h3>" +
+                    "<p>答案是：" + strRNum + "</p>" +
+                    "<p>请在下方填写你的大名，系统会将你记录在星云链中</p>" +
+                    "<div class=\"input-group justify-content-center\">" +
+                    "<input id=\"input-warrior-name\" type=\"text\" " +
+                    "class=\"form-control col-md-4\"><div class=\"input-group-append\">" +
+                    "<button id=\"btn-warrior-name\" type=\"submit\" class=\"btn btn-dark\">" +
+                    "提交</button></div></div>";
+            $("#content-text-result").html(successContent);
+            $(this).attr('disabled', "true");
+        } else {
+
+            var rNum = 0;
+            var rPos = 0;
+            var arrGuess = num.split("");
+            for (var i = 0; i < arrGuess.length; i++) {
+                var index = strRNum.indexOf(arrGuess[i]);
+                rNum += index >= 0 ? 1 : 0;
+                rPos += index == i ? 1 : 0;
+            }
+
+            var resList = "<li class=\"list-group-item list-group-item-success" +
+                    " flex-column align-items-start\">" +
+                    "<div class=\"d-flex w-100 justify-content-between\">" +
+                    "<h6 class=\"mb-1\">" + num + "</h6><small>还剩&nbsp;" + countDown +
+                    "&nbsp;次机会</small></div>" +
+                    "<small class=\"d-flex w-100 align-items-start\">" +
+                    "猜对了" + rNum + "个数字，其中位置正确的有" + rPos + "个" +
+                    "</small></li>";
+
+            $("#content-guess-result").append(resList);
+
+            if (countDown == 0) {
+                var failContent = "<h3>很遗憾解密失败！</h3>" +
+                        "<p>答案是：" + strRNum + "</p>" +
+                        "<p>点击下方按钮重新挑战吧</p>" +
+                        "<button type=\"submit\" class=\"btn btn-dark\" onclick=\"location.reload();\">" +
+                        "<i class=\"fas fa-redo\"></i>&nbsp;refresh</button>";
+                $("#content-text-result").html(failContent);
+                $(this).attr('disabled', "true");
+            }
+        }
+
+
+    }
+});
+
+//填写名字
+$(document).on("click", "#btn-warrior-name", function () {
+    if (typeof (webExtensionWallet) == "undefined") {
+        alert("需要先安装chrome钱包插件，才能继续操作");
+    } else {
+        var name = $("#input-warrior-name").val();
+        if (name.length > 6) {
+            alert("名字不可以大于6个字");
+        } else {
+
+            warrior = {"name": name, "quest": randomNum.join(""), "count": 6 - countDown, "date":
+                    new Date().getTime()};
+
+            addQuestQueryId = setInterval(function () {
+                addQuestQuery();
+            }, 8000);
+
+            var callArgs = JSON.stringify([questKey.toString(), warrior]);
+            serialNumber = nebPay.call(dappAddress, 0, "setQuest", callArgs, {
+                listener: function (res) {
+                    txHash = res.txhash;
+                    if (typeof res == "string") {
+                        clearInterval(addQuestQueryId);
+                    } else {
+                        $("#btn-warrior-name").html("请稍等...").attr('disabled', "true");
+
+                    }
+                }
+            });
+
+//查询写入操作是否完成
+            function addQuestQuery() {
+                if (txHash.length != 0) {
+                    neb.api.getTransactionReceipt({hash: txHash}).then(function (res) {
+
+                        if (res.status === 1) {
+                            clearInterval(addQuestQueryId);
+
+                            var masthead = "<div class=\"col-xl-9 mx-auto\">" +
+                                    "<h3 class=\"mb-5\">恭喜&nbsp;" + warrior.name + "</h3>" +
+                                    "<p>尝试了&nbsp;" + warrior.count + "&nbsp;次<br>" +
+                                    "找到了答案：" + warrior.quest +
+                                    "<br>于" + timeStamp2String(warrior.date) + "解密成功</p><br>" +
+                                    "<p>点击下方按钮，生成一道新谜题，让你的好友来挑战吧！</p></div>" +
+                                    "<div class=\"col-md-10 col-lg-8 col-xl-7 mx-auto \">" +
+                                    "<div id=\"content-index\"><button id=\"btn-new-quest\" type=\"submit\"" +
+                                    "class=\"btn btn-block btn-lg btn-dark\">生成新迷题</button> </div></div>";
+                            $("#content-masthead").html(masthead);
+                        }
+                    }).catch(function (err) {
+                                console.log(err);
+                            });
+                }
+
+            }
+
+        }
+
+    }
+});
+
+</script>
+
+</body>
+
+</html>
+
