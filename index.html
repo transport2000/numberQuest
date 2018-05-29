@@ -220,8 +220,9 @@ function initQuestPage(key) {
                             "<h3 class=\"mb-5\">似乎找不到对应的数字谜题</h3>" +
                             "<p>请刷新后重试吧</p></div >" +
                             "<div class=\"col-md-10 col-lg-8 col-xl-7 mx-auto \">" +
-                            "<div id=\"content-index\"><button id=\"btn-new-quest\" type=\"submit\"" +
-                            "class=\"btn btn-block btn-lg btn-dark\"> 重新挑战</button> </div></div>";
+                            "<div id=\"content-index\"><button type=\"submit\"" +
+                            "class=\"btn btn-block btn-lg btn-dark\" onclick=\"location.reload();\">" +
+                            "刷新</button> </div></div>";
                     $("#content-masthead").html(masthead);
 
                 } else {
@@ -315,7 +316,7 @@ $(document).on("click", "#btn-guess", function () {
                         "<p>答案是：" + strRNum + "</p>" +
                         "<p>点击下方按钮重新挑战吧</p>" +
                         "<button type=\"submit\" class=\"btn btn-dark\" onclick=\"location.reload();\">" +
-                        "<i class=\"fas fa-redo\"></i>&nbsp;refresh</button>";
+                        "<i class=\"fas fa-redo\"></i>&nbsp;重新挑战</button>";
                 $("#content-text-result").html(failContent);
                 $(this).attr('disabled', "true");
             }
@@ -335,8 +336,7 @@ $(document).on("click", "#btn-warrior-name", function () {
             alert("名字不可以大于6个字");
         } else {
 
-            warrior = {"name": name, "quest": randomNum.join(""), "count": 6 - countDown, "date":
-                    new Date().getTime()};
+            warrior = {"name": name, "quest": randomNum.join(""), "count": 6 - countDown, "date": new Date().getTime()};
 
             addQuestQueryId = setInterval(function () {
                 addQuestQuery();
@@ -375,8 +375,8 @@ $(document).on("click", "#btn-warrior-name", function () {
                             $("#content-masthead").html(masthead);
                         }
                     }).catch(function (err) {
-                                console.log(err);
-                            });
+                        console.log(err);
+                    });
                 }
 
             }
